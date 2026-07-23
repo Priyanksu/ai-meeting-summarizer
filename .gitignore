@@ -1,0 +1,28 @@
+# Python / Virtual Environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Audio temporary files
+temp_audio/
+*.wav
+*.mp3
+*.m4a
+
+# SQLite Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / React Frontend
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
