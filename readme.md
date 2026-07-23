@@ -28,9 +28,13 @@ An end-to-end, privacy-focused meeting transcription and structured summarizatio
 ### Backend setup
 
 cd backend
+
 python -m venv venv
+
 (On ubuntu) source venv/bin/activate (On Windows) venv\Scripts\activate
+
 pip install -r requirements.txt
+
 uvicorn main:app --reload --port 8000
 
 ### Frontend setup
