@@ -40,5 +40,7 @@ uvicorn main:app --reload --port 8000
 ### Frontend setup
 
 cd frontend
+
 npm install
+
 npm run dev
