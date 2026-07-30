@@ -95,18 +95,28 @@ ${summary?.executive_summary || "N/A"}
 ${summaryEn?.executive_summary ? `\n*(English Translation)*:\n${summaryEn.executive_summary}` : ""}
 
 ## Key Discussion Points
-${summary?.key_discussion_points?.map((p, i) => `- ${p}${summaryEn?.key_discussion_points?.[i] ? `\n  *(En: ${summaryEn.key_discussion_points[i]})*` : ""}`).join("\n") || "None"}
+${Array.isArray(summary?.key_discussion_points) && summary.key_discussion_points.length > 0 ? summary.key_discussion_points.map((p, i) => `- ${p}${summaryEn?.key_discussion_points?.[i] ? `\n  *(En: ${summaryEn.key_discussion_points[i]})*` : ""}`).join("\n") : "None"}
 
 ## Action Items
-${summary?.action_items?.map((item, i) => `- [ ] ${item}${summaryEn?.action_items?.[i] ? `\n  *(En: ${summaryEn.action_items[i]})*` : ""}`).join("\n") || "None"}
+${Array.isArray(summary?.action_items) && summary.action_items.length > 0 ? summary.action_items.map((item, i) => `- [ ] ${item}${summaryEn?.action_items?.[i] ? `\n  *(En: ${summaryEn.action_items[i]})*` : ""}`).join("\n") : "None"}
 
 ## Decisions Taken
-${summary?.decisions_taken?.map((d, i) => `- ${d}${summaryEn?.decisions_taken?.[i] ? `\n  *(En: ${summaryEn.decisions_taken[i]})*` : ""}`).join("\n") || "None"}
+${Array.isArray(summary?.decisions_taken) && summary.decisions_taken.length > 0 ? summary.decisions_taken.map((d, i) => `- ${d}${summaryEn?.decisions_taken?.[i] ? `\n  *(En: ${summaryEn.decisions_taken[i]})*` : ""}`).join("\n") : "None"}
 
 ## Pending Issues
-${summary?.pending_issues?.map((p, i) => `- ${p}${summaryEn?.pending_issues?.[i] ? `\n  *(En: ${summaryEn.pending_issues[i]})*` : ""}`).join("\n") || "None"}
+${Array.isArray(summary?.pending_issues) && summary.pending_issues.length > 0 ? summary.pending_issues.map((p, i) => `- ${p}${summaryEn?.pending_issues?.[i] ? `\n  *(En: ${summaryEn.pending_issues[i]})*` : ""}`).join("\n") : "None"}
+
+## Participants Mentioned
+${Array.isArray(summary?.participants_mentioned) && summary.participants_mentioned.length > 0 ? summary.participants_mentioned.map((p) => `- ${p}`).join("\n") : "None detected"}
+
+## Meeting Tone
+${summary?.meeting_tone || "Not assessed"}
+
+## Follow-up Needed
+${Array.isArray(summary?.follow_up_needed) && summary.follow_up_needed.length > 0 ? summary.follow_up_needed.map((f) => `- ${f}`).join("\n") : "None"}
 
 ---
+
 ### Full Transcript
 ${activeMeeting.transcript}
     `.trim();
@@ -137,7 +147,7 @@ ${activeMeeting.transcript}
               AI Meeting Summarizer
             </span>
             <span className="text-[10px] text-slate-400 block font-normal">
-              Faster-Whisper & Llama 3.1
+              Faster-Whisper & Qwen 2.5
             </span>
           </div>
         </div>
@@ -180,7 +190,7 @@ ${activeMeeting.transcript}
 
       {/* SCREEN 1: WORKSPACE */}
       {currentScreen === "workspace" && (
-        <main className="flex-1 max-w-4xl mx-auto w-full p-6 space-y-6">
+        <main className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-8 space-y-6">
           {/* Upload Area */}
           <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-xl relative overflow-hidden">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
@@ -371,28 +381,25 @@ ${activeMeeting.transcript}
                         Key Discussion Points
                       </h3>
                       <ul className="space-y-2.5">
-                        {activeMeeting.summary?.key_discussion_points?.map(
-                          (pt, idx) => (
+                        {Array.isArray(activeMeeting.summary?.key_discussion_points) && activeMeeting.summary.key_discussion_points.length > 0 ? (
+                          activeMeeting.summary.key_discussion_points.map((pt, idx) => (
                             <li key={idx} className="text-xs text-slate-300">
                               <div className="flex items-start gap-2">
                                 <span className="text-cyan-400 font-bold">
                                   •
                                 </span>
-                                <span className="leading-relaxed">{pt}</span>
+                                <span className="leading-relaxed">{String(pt)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en
-                                ?.key_discussion_points?.[idx] && (
+                              {activeMeeting.summary?.summary_en?.key_discussion_points?.[idx] && (
                                 <p className="text-[11px] text-slate-400 italic pl-3.5 mt-0.5">
-                                  ↳{" "}
-                                  {
-                                    activeMeeting.summary.summary_en
-                                      .key_discussion_points[idx]
-                                  }
+                                  ↳ {String(activeMeeting.summary.summary_en.key_discussion_points[idx])}
                                 </p>
                               )}
                             </li>
-                          ),
-                        ) || <li className="text-xs text-slate-500">None</li>}
+                          ))
+                        ) : (
+                          <li className="text-xs text-slate-500">None</li>
+                        )}
                       </ul>
                     </div>
 
@@ -402,26 +409,23 @@ ${activeMeeting.transcript}
                         Action Items
                       </h3>
                       <ul className="space-y-2.5">
-                        {activeMeeting.summary?.action_items?.map(
-                          (item, idx) => (
+                        {Array.isArray(activeMeeting.summary?.action_items) && activeMeeting.summary.action_items.length > 0 ? (
+                          activeMeeting.summary.action_items.map((item, idx) => (
                             <li key={idx} className="text-xs text-slate-300">
                               <div className="flex items-start gap-2">
                                 <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                                <span className="leading-relaxed">{item}</span>
+                                <span className="leading-relaxed">{String(item)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en
-                                ?.action_items?.[idx] && (
+                              {activeMeeting.summary?.summary_en?.action_items?.[idx] && (
                                 <p className="text-[11px] text-slate-400 italic pl-5 mt-0.5">
-                                  ↳{" "}
-                                  {
-                                    activeMeeting.summary.summary_en
-                                      .action_items[idx]
-                                  }
+                                  ↳ {String(activeMeeting.summary.summary_en.action_items[idx])}
                                 </p>
                               )}
                             </li>
-                          ),
-                        ) || <li className="text-xs text-slate-500">None</li>}
+                          ))
+                        ) : (
+                          <li className="text-xs text-slate-500">None</li>
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -434,28 +438,23 @@ ${activeMeeting.transcript}
                         Decisions Taken
                       </h3>
                       <ul className="space-y-2.5">
-                        {activeMeeting.summary?.decisions_taken?.map(
-                          (dec, idx) => (
+                        {Array.isArray(activeMeeting.summary?.decisions_taken) && activeMeeting.summary.decisions_taken.length > 0 ? (
+                          activeMeeting.summary.decisions_taken.map((dec, idx) => (
                             <li key={idx} className="text-xs text-slate-300">
                               <div className="flex items-start gap-2">
-                                <span className="text-indigo-400 font-bold">
-                                  ✓
-                                </span>
-                                <span className="leading-relaxed">{dec}</span>
+                                <span className="text-indigo-400 font-bold">✓</span>
+                                <span className="leading-relaxed">{String(dec)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en
-                                ?.decisions_taken?.[idx] && (
+                              {activeMeeting.summary?.summary_en?.decisions_taken?.[idx] && (
                                 <p className="text-[11px] text-slate-400 italic pl-3.5 mt-0.5">
-                                  ↳{" "}
-                                  {
-                                    activeMeeting.summary.summary_en
-                                      .decisions_taken[idx]
-                                  }
+                                  ↳ {String(activeMeeting.summary.summary_en.decisions_taken[idx])}
                                 </p>
                               )}
                             </li>
-                          ),
-                        ) || <li className="text-xs text-slate-500">None</li>}
+                          ))
+                        ) : (
+                          <li className="text-xs text-slate-500">None</li>
+                        )}
                       </ul>
                     </div>
 
@@ -465,29 +464,85 @@ ${activeMeeting.transcript}
                         Pending Issues / Risks
                       </h3>
                       <ul className="space-y-2.5">
-                        {activeMeeting.summary?.pending_issues?.map(
-                          (iss, idx) => (
+                        {Array.isArray(activeMeeting.summary?.pending_issues) && activeMeeting.summary.pending_issues.length > 0 ? (
+                          activeMeeting.summary.pending_issues.map((iss, idx) => (
                             <li key={idx} className="text-xs text-slate-300">
                               <div className="flex items-start gap-2">
                                 <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                                <span className="leading-relaxed">{iss}</span>
+                                <span className="leading-relaxed">{String(iss)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en
-                                ?.pending_issues?.[idx] && (
+                              {activeMeeting.summary?.summary_en?.pending_issues?.[idx] && (
                                 <p className="text-[11px] text-slate-400 italic pl-5 mt-0.5">
-                                  ↳{" "}
-                                  {
-                                    activeMeeting.summary.summary_en
-                                      .pending_issues[idx]
-                                  }
+                                  ↳ {String(activeMeeting.summary.summary_en.pending_issues[idx])}
                                 </p>
                               )}
                             </li>
-                          ),
-                        ) || <li className="text-xs text-slate-500">None</li>}
+                          ))
+                        ) : (
+                          <li className="text-xs text-slate-500">None</li>
+                        )}
                       </ul>
                     </div>
                   </div>
+                                    {/* Participants & Tone Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Participants Mentioned */}
+                    <div className="bg-[#0b101b] border border-slate-800 rounded-xl p-4">
+                      <h3 className="text-xs font-bold text-violet-400 mb-2 uppercase tracking-wider">
+                        Participants Mentioned
+                      </h3>
+                      <ul className="space-y-1.5">
+                        {Array.isArray(activeMeeting.summary?.participants_mentioned) && activeMeeting.summary.participants_mentioned.length > 0 ? (
+                          activeMeeting.summary.participants_mentioned.map((person, idx) => (
+                            <li key={idx} className="text-xs text-slate-300 flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-[10px] text-violet-400 font-bold shrink-0">
+                                {typeof person === 'string' && person ? person.charAt(0).toUpperCase() : '?'}
+                              </span>
+                              <span className="leading-relaxed truncate">{String(person)}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-xs text-slate-500">None detected</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    {/* Meeting Tone */}
+                    <div className="bg-[#0b101b] border border-slate-800 rounded-xl p-4">
+                      <h3 className="text-xs font-bold text-amber-400 mb-2 uppercase tracking-wider">
+                        Meeting Tone
+                      </h3>
+                      {activeMeeting.summary?.meeting_tone ? (
+                        <span className="inline-block text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 px-3 py-1.5 rounded-lg font-medium">
+                          {activeMeeting.summary.meeting_tone}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Not assessed</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Follow-up Needed */}
+                  <div className="bg-[#0b101b] border border-slate-800 rounded-xl p-4">
+                    <h3 className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wider">
+                      Follow-up Needed
+                    </h3>
+                    <ul className="space-y-2.5">
+                      {Array.isArray(activeMeeting.summary?.follow_up_needed) && activeMeeting.summary.follow_up_needed.length > 0 ? (
+                        activeMeeting.summary.follow_up_needed.map((item, idx) => (
+                          <li key={idx} className="text-xs text-slate-300">
+                            <div className="flex items-start gap-2">
+                              <span className="text-orange-400 font-bold">→</span>
+                              <span className="leading-relaxed">{String(item)}</span>
+                            </div>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-xs text-slate-500">None</li>
+                      )}
+                    </ul>
+                  </div>
+
                 </div>
               ) : (
                 /* TRANSCRIPT VIEW */
@@ -519,7 +574,7 @@ ${activeMeeting.transcript}
 
       {/* SCREEN 2: PREVIOUS MEETINGS HISTORY SCREEN */}
       {currentScreen === "history" && (
-        <main className="flex-1 max-w-5xl mx-auto w-full p-6 space-y-5">
+        <main className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-8 space-y-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
