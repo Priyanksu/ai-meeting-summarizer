@@ -4,43 +4,79 @@ An end-to-end, privacy-focused meeting transcription and structured summarizatio
 
 ## Features
 
-- **Speech-to-Text**: Offline audio transcription powered by `Faster-Whisper`.
-- **Local LLM Pipeline**: Structured meeting summary extraction using `Llama 3.1` via `Ollama`.
-- **Multilingual Support**: Supports English, Hindi, and Assamese with automatic English side-by-side translations.
+- **Speech-to-Text**: GPU-accelerated audio transcription powered by `Faster-Whisper` with timestamped output and confidence scores.
+- **Local LLM Pipeline**: Detailed meeting summary extraction using `Qwen 2.5` via `Ollama` with JSON retry logic.
+- **Multilingual Support**: Supports English, Hindi, and Assamese with automatic English translations.
 - **FastAPI Backend**: SQLAlchemy database storage and RESTful endpoints.
-- **React Frontend**: Clean Tailwind CSS interface with workspace and meeting history tracking.
+- **React Frontend**: Clean Tailwind CSS interface with workspace, meeting history, and markdown export.
 
 ## Tech Stack
 
 - **Frontend**: React (Vite), Tailwind CSS, Axios, Lucide Icons
 - **Backend**: Python, FastAPI, SQLAlchemy, SQLite
-- **AI Models**: Faster-Whisper, Llama 3.1 (Ollama)
+- **AI Models**: Faster-Whisper (small, CUDA), Qwen 2.5 3B (Ollama)
 
 ## Setup Instructions
 
 ### 1. Prerequisites
 
-- Install [Ollama](https://ollama.com/) and pull Llama 3.1:
+- Python 3.11+
+- Node.js 18+
+- NVIDIA GPU with CUDA support
+- Install [Ollama](https://ollama.com/) and pull Qwen 2.5:
   ```bash
-  ollama pull llama3.1
+  ollama pull qwen2.5:3b
   ```
 
-### Backend setup
+### 2. Backend Setup
 
+```bash
 cd backend
 
 python -m venv venv
 
-(On ubuntu) source venv/bin/activate (On Windows) venv\Scripts\activate
+# On Ubuntu
+source venv/bin/activate
 
-pip install -r requirements.txt
+# On Windows
+venv/Scripts/activate
 
-uvicorn main:app --reload --port 8000
+pip install -r ../requirements.txt
 
-### Frontend setup
+uvicorn app.main:app --reload --port 8000 --timeout-keep-alive 300
+```
 
+### 3. Frontend Setup
+
+```bash
 cd frontend
 
 npm install
 
 npm run dev
+```
+
+### 4. Open the App
+
+Navigate to `http://localhost:5173` in your browser.
+
+## How It Works
+
+1. **Upload** an audio file (MP3, WAV, M4A, AAC)
+2. **Select** the audio language (English, Hindi, or Assamese)
+3. The backend **transcribes** the audio using Faster-Whisper on GPU with timestamps and confidence scores
+4. The transcript is **summarized** by Qwen 2.5 into structured JSON with executive summary, action items, decisions, participants, tone, and follow-ups
+5. Results are **saved** to SQLite and displayed in the frontend
+
+## Summary Output Fields
+
+| Field | Description |
+|---|---|
+| Executive Summary | 3-5 paragraph overview of the meeting |
+| Key Discussion Points | Major topics with context and nuance |
+| Action Items | Tasks with responsible person and deadlines |
+| Decisions Taken | Each decision with reasoning |
+| Pending Issues | Unresolved items with blockers |
+| Participants Mentioned | Names or roles detected |
+| Meeting Tone | Overall tone (productive, contentious, etc.) |
+| Follow-up Needed | Items needing follow-up with next steps |
