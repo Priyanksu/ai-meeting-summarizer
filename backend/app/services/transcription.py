@@ -9,7 +9,7 @@ _whisper_models = {}
 def get_whisper_model():
     """Loads and caches the Whisper small model on GPU."""
     if "multilingual" not in _whisper_models:
-        print("Loading Whisper small model on GPU... Please wait.")
+        print("Loading Whisper small model... Please wait.")
         _whisper_models["multilingual"] = WhisperModel(
             "small",
             device=device,
