@@ -6,7 +6,7 @@ An end-to-end, privacy-focused meeting transcription and structured summarizatio
 
 - **Speech-to-Text**: GPU-accelerated audio transcription powered by `Faster-Whisper` with timestamped output and confidence scores.
 - **Local LLM Pipeline**: Detailed meeting summary extraction using `Qwen 2.5` via `Ollama` with JSON retry logic.
-- **Multilingual Support**: Supports English, Hindi, and Assamese with automatic English translations.
+- **Multilingual Support**: Transcribes English, Hindi, and Assamese audio natively, and automatically generates high-quality structured summaries in English.
 - **FastAPI Backend**: SQLAlchemy database storage and RESTful endpoints.
 - **React Frontend**: Clean Tailwind CSS interface with workspace, meeting history, and markdown export.
 
