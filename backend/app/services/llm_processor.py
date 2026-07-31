@@ -68,34 +68,10 @@ def generate_english_summary(english_transcript: str) -> dict:
                     "pending_issues": [],
                     "participants_mentioned": [],
                     "meeting_tone": "Unknown",
-                    "follow_up_needed": []
                 }
 
-
-def translate_summary_json(summary_json: dict, target_lang: str) -> dict:
-    """Translates the full summary JSON back into the target language."""
-    system_prompt = (
-        f"You are an expert translator. Translate all textual values in the provided JSON object "
-        f"from English to {target_lang}. Keep all JSON keys exactly the same. "
-        f"Respond ONLY with a valid JSON object matching the input structure."
-    )
-    user_content = json.dumps(summary_json, ensure_ascii=False)
-
-    for attempt in range(2):
-        try:
-            translated_raw = query_local_llm(system_prompt, user_content, json_mode=True)
-            return json.loads(translated_raw)
-        except json.JSONDecodeError:
-            if attempt == 0:
-                print("Translation JSON failed. Retrying...")
-                continue
-            else:
-                print("Translation JSON failed after retry. Returning English version.")
-                return summary_json
-
-
 def process_meeting_pipeline(transcript: str, language: str) -> dict:
-    """Full pipeline: translate if needed → summarize → translate back."""
+    """Full pipeline: translate if needed → summarize."""
     language_map = {"en": "English", "hi": "Hindi", "as": "Assamese"}
     current_lang = language_map.get(language, "English")
 
@@ -109,13 +85,5 @@ def process_meeting_pipeline(transcript: str, language: str) -> dict:
     # Step 2: Generate detailed English summary
     print("Generating structured summary...")
     english_summary_json = generate_english_summary(english_transcript)
-
-    # Step 3: For non-English, translate summary back and keep both versions
-    if language != "en":
-        print(f"Translating summary back into {current_lang}...")
-        native_summary_json = translate_summary_json(english_summary_json, current_lang)
-        final_output = native_summary_json
-        final_output["summary_en"] = english_summary_json
-        return final_output
 
     return english_summary_json
