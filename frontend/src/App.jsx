@@ -81,7 +81,6 @@ export default function App() {
     if (!activeMeeting) return;
 
     const summary = activeMeeting.summary;
-    const summaryEn = summary?.summary_en;
 
     let content = `
 # Meeting Summary: ${activeMeeting.filename}
@@ -92,19 +91,18 @@ export default function App() {
 
 ## Executive Summary
 ${summary?.executive_summary || "N/A"}
-${summaryEn?.executive_summary ? `\n*(English Translation)*:\n${summaryEn.executive_summary}` : ""}
 
 ## Key Discussion Points
-${Array.isArray(summary?.key_discussion_points) && summary.key_discussion_points.length > 0 ? summary.key_discussion_points.map((p, i) => `- ${p}${summaryEn?.key_discussion_points?.[i] ? `\n  *(En: ${summaryEn.key_discussion_points[i]})*` : ""}`).join("\n") : "None"}
+${Array.isArray(summary?.key_discussion_points) && summary.key_discussion_points.length > 0 ? summary.key_discussion_points.map((p) => `- ${p}`).join("\n") : "None"}
 
 ## Action Items
-${Array.isArray(summary?.action_items) && summary.action_items.length > 0 ? summary.action_items.map((item, i) => `- [ ] ${item}${summaryEn?.action_items?.[i] ? `\n  *(En: ${summaryEn.action_items[i]})*` : ""}`).join("\n") : "None"}
+${Array.isArray(summary?.action_items) && summary.action_items.length > 0 ? summary.action_items.map((item) => `- [ ] ${item}`).join("\n") : "None"}
 
 ## Decisions Taken
-${Array.isArray(summary?.decisions_taken) && summary.decisions_taken.length > 0 ? summary.decisions_taken.map((d, i) => `- ${d}${summaryEn?.decisions_taken?.[i] ? `\n  *(En: ${summaryEn.decisions_taken[i]})*` : ""}`).join("\n") : "None"}
+${Array.isArray(summary?.decisions_taken) && summary.decisions_taken.length > 0 ? summary.decisions_taken.map((d) => `- ${d}`).join("\n") : "None"}
 
 ## Pending Issues
-${Array.isArray(summary?.pending_issues) && summary.pending_issues.length > 0 ? summary.pending_issues.map((p, i) => `- ${p}${summaryEn?.pending_issues?.[i] ? `\n  *(En: ${summaryEn.pending_issues[i]})*` : ""}`).join("\n") : "None"}
+${Array.isArray(summary?.pending_issues) && summary.pending_issues.length > 0 ? summary.pending_issues.map((p) => `- ${p}`).join("\n") : "None"}
 
 ## Participants Mentioned
 ${Array.isArray(summary?.participants_mentioned) && summary.participants_mentioned.length > 0 ? summary.participants_mentioned.map((p) => `- ${p}`).join("\n") : "None detected"}
@@ -348,29 +346,12 @@ ${activeMeeting.transcript}
                       <span className="flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" /> Executive Summary
                       </span>
-                      {activeMeeting.summary?.summary_en && (
-                        <span className="text-[10px] bg-teal-500/10 text-teal-300 border border-teal-500/20 px-2 py-0.5 rounded font-mono font-medium">
-                          Bilingual View
-                        </span>
-                      )}
                     </h3>
 
                     <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                       {activeMeeting.summary?.executive_summary ||
                         "No executive summary extracted."}
                     </p>
-
-                    {/* English Translation Overlay for Non-English Audio */}
-                    {activeMeeting.summary?.summary_en?.executive_summary && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/60">
-                        <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block mb-1">
-                          English Translation:
-                        </span>
-                        <p className="text-xs text-slate-300 italic leading-relaxed">
-                          "{activeMeeting.summary.summary_en.executive_summary}"
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Discussion Points & Action Items Grid */}
@@ -390,11 +371,6 @@ ${activeMeeting.transcript}
                                 </span>
                                 <span className="leading-relaxed">{String(pt)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en?.key_discussion_points?.[idx] && (
-                                <p className="text-[11px] text-slate-400 italic pl-3.5 mt-0.5">
-                                  ↳ {String(activeMeeting.summary.summary_en.key_discussion_points[idx])}
-                                </p>
-                              )}
                             </li>
                           ))
                         ) : (
@@ -416,11 +392,6 @@ ${activeMeeting.transcript}
                                 <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                                 <span className="leading-relaxed">{String(item)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en?.action_items?.[idx] && (
-                                <p className="text-[11px] text-slate-400 italic pl-5 mt-0.5">
-                                  ↳ {String(activeMeeting.summary.summary_en.action_items[idx])}
-                                </p>
-                              )}
                             </li>
                           ))
                         ) : (
@@ -445,11 +416,6 @@ ${activeMeeting.transcript}
                                 <span className="text-indigo-400 font-bold">✓</span>
                                 <span className="leading-relaxed">{String(dec)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en?.decisions_taken?.[idx] && (
-                                <p className="text-[11px] text-slate-400 italic pl-3.5 mt-0.5">
-                                  ↳ {String(activeMeeting.summary.summary_en.decisions_taken[idx])}
-                                </p>
-                              )}
                             </li>
                           ))
                         ) : (
@@ -471,11 +437,6 @@ ${activeMeeting.transcript}
                                 <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
                                 <span className="leading-relaxed">{String(iss)}</span>
                               </div>
-                              {activeMeeting.summary?.summary_en?.pending_issues?.[idx] && (
-                                <p className="text-[11px] text-slate-400 italic pl-5 mt-0.5">
-                                  ↳ {String(activeMeeting.summary.summary_en.pending_issues[idx])}
-                                </p>
-                              )}
                             </li>
                           ))
                         ) : (
