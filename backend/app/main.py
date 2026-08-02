@@ -140,3 +140,13 @@ def get_meeting_by_id(meeting_id: int, db: Session = Depends(get_db)):
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     return meeting
+
+@app.delete("/api/meetings/{meeting_id}")
+def delete_meeting(meeting_id: int, db: Session = Depends(get_db)):
+    """Deletes a meeting record from the database."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    db.delete(meeting)
+    db.commit()
+    return {"status": "Deleted", "id": meeting_id}
