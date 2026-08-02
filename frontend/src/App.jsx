@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import {
   Upload,
@@ -17,6 +17,12 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
+  Mic,
+  Pause,
+  Play,
+  Square,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 
 const API_BASE = "http://localhost:8000/api";
@@ -31,9 +37,27 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("summary"); // 'summary' | 'transcript'
 
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [recordedBlob, setRecordedBlob] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedDuration, setRecordedDuration] = useState(0);
+  const [recordingName, setRecordingName] = useState("");
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const streamRef = useRef(null);
+  const recordingTimeRef = useRef(0);
+
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  // Keep ref in sync with state for use in callbacks
+  useEffect(() => {
+    recordingTimeRef.current = recordingTime;
+  }, [recordingTime]);
 
   const fetchHistory = async () => {
     try {
@@ -44,13 +68,139 @@ export default function App() {
     }
   };
 
+  // --- Recording functions ---
+  const formatTime = (totalSeconds) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const generateRecordingFilename = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `Recording_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.webm`;
+  };
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      });
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setRecordedBlob(blob);
+        setRecordedDuration(recordingTimeRef.current);
+        // Set default editable filename (without extension for cleaner editing)
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        setRecordingName(`Recording_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`);
+        // Stop all tracks to release mic
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // collect data every second
+
+      setIsRecording(true);
+      setIsPaused(false);
+      setRecordedBlob(null);
+      setRecordingTime(0);
+      setFile(null); // clear any uploaded file
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert('Microphone access denied. Please allow microphone permission and try again.');
+      console.error('Mic access error:', err);
+    }
+  }, []);
+
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause();
+      setIsPaused(true);
+      clearInterval(timerRef.current);
+    }
+  }, []);
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      mediaRecorderRef.current.resume();
+      setIsPaused(false);
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      clearInterval(timerRef.current);
+    }
+  }, []);
+
+  const discardRecording = useCallback(() => {
+    setRecordedBlob(null);
+    setRecordingTime(0);
+    setRecordedDuration(0);
+    setRecordingName("");
+    chunksRef.current = [];
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(timerRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const hasAudio = file || recordedBlob;
+
   const handleProcess = async (e) => {
     e.preventDefault();
-    if (!file) return;
+    if (!hasAudio) return;
 
     setLoading(true);
     const formData = new FormData();
-    formData.append("file", file);
+
+    if (recordedBlob) {
+      // Wrap the recorded blob as a File object using the user-editable name
+      const finalName = (recordingName.trim() || 'Recording') + '.webm';
+      const recordingFile = new File([recordedBlob], finalName, {
+        type: 'audio/webm',
+      });
+      formData.append("file", recordingFile);
+    } else {
+      formData.append("file", file);
+    }
     formData.append("language", language);
 
     try {
@@ -62,6 +212,10 @@ export default function App() {
       setActiveMeeting(res.data);
       fetchHistory();
       setFile(null);
+      setRecordedBlob(null);
+      setRecordingTime(0);
+      setRecordedDuration(0);
+      setRecordingName("");
       setCurrentScreen("workspace");
     } catch (err) {
       if (err.code === "ECONNABORTED") {
@@ -126,6 +280,22 @@ ${activeMeeting.transcript}
     a.download = `${activeMeeting.filename}_summary.md`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteMeeting = async (e, meetingId) => {
+    e.stopPropagation(); // prevent card click from opening the meeting
+    if (!confirm("Are you sure you want to delete this meeting? This cannot be undone.")) return;
+
+    try {
+      await axios.delete(`${API_BASE}/meetings/${meetingId}`);
+      // If the deleted meeting is currently active, clear it
+      if (activeMeeting && activeMeeting.id === meetingId) {
+        setActiveMeeting(null);
+      }
+      fetchHistory();
+    } catch (err) {
+      alert("Failed to delete meeting: " + (err.response?.data?.detail || err.message));
+    }
   };
 
   const filteredHistory = history.filter((m) =>
@@ -218,33 +388,152 @@ ${activeMeeting.transcript}
             </div>
 
             <form onSubmit={handleProcess} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                {/* File Drop Box */}
-                <div className="md:col-span-2 border border-dashed border-slate-700 hover:border-teal-500/80 rounded-xl p-4 text-center cursor-pointer transition-all bg-[#0b101b] relative group">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => setFile(e.target.files[0])}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  />
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-800 group-hover:bg-teal-500/10 flex items-center justify-center transition-colors">
-                      <FileAudio className="w-4 h-4 text-slate-400 group-hover:text-teal-400 transition-colors" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-medium text-slate-200 truncate max-w-[200px]">
-                        {file ? file.name : "Choose audio file or drop here"}
-                      </p>
-                      <p className="text-[10px] text-slate-500">
-                        MP3, WAV, M4A, AAC (Max 500MB)
-                      </p>
+              {/* Dual-input area: File picker OR Record */}
+              {!isRecording && !recordedBlob ? (
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center">
+                  {/* File Drop Box */}
+                  <div className="border border-dashed border-slate-700 hover:border-teal-500/80 rounded-xl p-4 text-center cursor-pointer transition-all bg-[#0b101b] relative group">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => { setFile(e.target.files[0]); setRecordedBlob(null); }}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-800 group-hover:bg-teal-500/10 flex items-center justify-center transition-colors">
+                        <FileAudio className="w-4 h-4 text-slate-400 group-hover:text-teal-400 transition-colors" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-medium text-slate-200 truncate max-w-[200px]">
+                          {file ? file.name : "Choose audio file or drop here"}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          MP3, WAV, M4A, AAC (Max 500MB)
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Select & Submit Controls */}
-                <div className="space-y-2">
-                  <div>
+                  {/* OR Divider */}
+                  {!file && (
+                    <>
+                      <div className="flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">or</span>
+                      </div>
+
+                      {/* Record Button */}
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        className="flex items-center gap-2.5 bg-[#0b101b] hover:bg-red-500/10 border border-slate-700 hover:border-red-500/50 rounded-xl px-5 py-4 transition-all group/rec cursor-pointer"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-red-500/10 group-hover/rec:bg-red-500/20 border border-red-500/30 flex items-center justify-center transition-colors">
+                          <Mic className="w-4 h-4 text-red-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-medium text-slate-200">Record Meeting</p>
+                          <p className="text-[10px] text-slate-500">Use microphone</p>
+                        </div>
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : isRecording ? (
+                /* Recording in progress */
+                <div className="border border-red-500/30 bg-red-500/5 rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full bg-red-500 ${!isPaused ? 'recording-pulse' : ''}`} />
+                      <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">
+                        {isPaused ? 'Paused' : 'Recording...'}
+                      </span>
+                      <span className="text-sm font-mono text-slate-200 tabular-nums">
+                        {formatTime(recordingTime)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!isPaused ? (
+                        <button
+                          type="button"
+                          onClick={pauseRecording}
+                          className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Pause className="w-3.5 h-3.5" /> Pause
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={resumeRecording}
+                          className="flex items-center gap-1.5 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-400 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5" /> Resume
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Square className="w-3.5 h-3.5" /> Stop
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Waveform animation */}
+                  <div className="flex items-center justify-center gap-[3px] h-8">
+                    {Array.from({ length: 32 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`waveform-bar w-[3px] rounded-full ${isPaused ? 'bg-slate-600' : 'bg-red-400/70'}`}
+                        style={{
+                          animationDelay: `${i * 0.05}s`,
+                          animationPlayState: isPaused ? 'paused' : 'running',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : recordedBlob ? (
+                /* Recording complete */
+                <div className="border border-teal-500/30 bg-teal-500/5 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-teal-500/10 border border-teal-500/30 flex items-center justify-center">
+                        <FileAudio className="w-4 h-4 text-teal-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={recordingName}
+                            onChange={(e) => setRecordingName(e.target.value)}
+                            className="text-xs font-medium text-slate-200 bg-transparent border-b border-dashed border-slate-600 focus:border-teal-500 outline-none py-0.5 w-56 transition-colors"
+                            placeholder="Enter recording name..."
+                          />
+                          <span className="text-[10px] text-slate-500">.webm</span>
+                          <Pencil className="w-3 h-3 text-slate-500" />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {formatTime(recordedDuration)} • {(recordedBlob.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={discardRecording}
+                      className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-red-400 bg-slate-800/60 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" /> Discard
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Language selector + Submit — always visible when not recording */}
+              {!isRecording && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                  <div className="md:col-span-2">
                     <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">
                       Audio Language
                     </label>
@@ -259,25 +548,27 @@ ${activeMeeting.transcript}
                     </select>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={!file || loading}
-                    className="w-full bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs shadow"
-                  >
-                    {loading ? (
-                      <>
-                        <Clock className="w-3.5 h-3.5 animate-spin" />{" "}
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <span>Summarize Meeting</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-end h-full">
+                    <button
+                      type="submit"
+                      disabled={!hasAudio || loading}
+                      className="w-full bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-bold py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs shadow mt-4 md:mt-0"
+                    >
+                      {loading ? (
+                        <>
+                          <Clock className="w-3.5 h-3.5 animate-spin" />{" "}
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <span>Summarize Meeting</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           </div>
 
@@ -525,8 +816,8 @@ ${activeMeeting.transcript}
                 No meeting selected
               </p>
               <p className="text-[11px] text-slate-500">
-                Upload an audio recording above or open a past meeting from
-                history.
+                Upload an audio recording, record a live meeting, or open a
+                past meeting from history.
               </p>
             </div>
           )}
@@ -606,9 +897,18 @@ ${activeMeeting.transcript}
                     </p>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-teal-400 font-medium">
-                    <span>Open Summary</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-medium">
+                    <span className="text-teal-400">Open Summary</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => handleDeleteMeeting(e, m.id)}
+                        className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title="Delete meeting"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <ChevronRight className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
                 </div>
               ))}
